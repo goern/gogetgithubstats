@@ -1,24 +1,20 @@
-// Copyright © 2015 Christoph Görn
-//
-//     The MIT License (MIT)
-//
-//   Permission is hereby granted, free of charge, to any person obtaining a copy
-//   of this software and associated documentation files (the "Software"), to deal
-//   in the Software without restriction, including without limitation the rights
-//   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-//   copies of the Software, and to permit persons to whom the Software is
-//   furnished to do so, subject to the following conditions:
-//
-//   The above copyright notice and this permission notice shall be included in all
-//   copies or substantial portions of the Software.
-//
-//   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-//   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-//   SOFTWARE.
+/* Copyright © 2015 Christoph Görn
+
+This file is part of gogetgithubstats.
+
+gogetgithubstats is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+gogetgithubstats is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with gogetgithubstats. If not, see <http://www.gnu.org/licenses/>.
+*/
 
 package cmd
 
@@ -27,25 +23,28 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 )
 
 var cfgFile string
+var accessToken string
+var Verbose bool
 
-// This represents the base command when called without any subcommands
+// RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "gogetgithubstats",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "Get some useful statistics from github",
+	Long: `gogetgithubstats is utility to get some useful statistics
+on github repositories and users.`,
+	// Uncomment the following line if your bare application
+	// has an action associated with it:
+	Run: func(cmd *cobra.Command, args []string) {
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-// Uncomment the following line if your bare application
-// has an action associated with it:
-//	Run: func(cmd *cobra.Command, args []string) { },
+	},
 }
+
+var rootCmdV *cobra.Command
 
 // Execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
@@ -59,14 +58,18 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports Persistent Flags, which, if defined here,
-	// will be global for your application.
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.gogetgithubstats.json)")
+	RootCmd.PersistentFlags().StringVar(&accessToken, "access-token", "ACCESSTOKEN", "Access Token to be used to authentication to github's API")
 
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.gogetgithubstats.yaml)")
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
+
+	RootCmd.SuggestionsMinimumDistance = 1
+
+	rootCmdV = RootCmd
+
+	viper.BindPFlag("access-token", RootCmd.PersistentFlags().Lookup("access-token"))
+	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -76,11 +79,31 @@ func initConfig() {
 	}
 
 	viper.SetConfigName(".gogetgithubstats") // name of config file (without extension)
-	viper.AddConfigPath("$HOME")  // adding home directory as first search path
-	viper.AutomaticEnv()          // read in environment variables that match
+	viper.AddConfigPath("$HOME")             // adding home directory as first search path
+	viper.AutomaticEnv()                     // read in environment variables that match
+
+	// This is the defaults
+	viper.SetDefault("Verbose", true)
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	err := viper.ReadInConfig()
+	if err != nil {
+		if _, ok := err.(viper.ConfigParseError); ok {
+			jww.ERROR.Println(err)
+		} else {
+			jww.ERROR.Println("Unable to locate Config file.", err)
+		}
+	}
+
+	if rootCmdV.PersistentFlags().Lookup("verbose").Changed {
+		viper.Set("Verbose", Verbose)
+	}
+
+	if rootCmdV.PersistentFlags().Lookup("access-token").Changed {
+		viper.Set("access-token", accessToken)
+	}
+
+	if viper.GetBool("verbose") {
+		jww.SetStdoutThreshold(jww.LevelDebug)
 	}
 }

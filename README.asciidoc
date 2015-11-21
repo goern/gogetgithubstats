@@ -1,0 +1,7 @@
+= gogetgithubstats
+Christoph Görn
+
+https://github.com/goern/gogetgithubstats[gogetgithubstats] is a tiny utility
+to get some useful statistics from github.
+
+Try something like `./gogetgithubstats get goern/grasshopper --access-token=A`

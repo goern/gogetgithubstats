@@ -21,23 +21,16 @@ package githubstats
 import (
 	"fmt"
 	"math"
-	"os"
 	"time"
 
 	"golang.org/x/oauth2"
 
 	"github.com/google/go-github/github"
-	"github.com/spf13/cobra/cobra/cmd"
 )
 
 //GetStatsByRepo will get a few usefull statistics on a given user's repository
 func GetStatsByRepo(user, repo, accessToken string) {
 	var issues []github.Issue
-
-	if err := cmd.RootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
-	}
 
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: accessToken},
@@ -46,8 +39,8 @@ func GetStatsByRepo(user, repo, accessToken string) {
 
 	client := github.NewClient(tc)
 
-	repos, _, err := client.Repositories.Get("projectatomic", "atomicapp")
-	client.Repositories.GetCombinedStatus("projectatomic", "atomicapp", "master", nil)
+	repos, _, err := client.Repositories.Get(user, repo)
+	client.Repositories.GetCombinedStatus(user, repo, "master", nil)
 
 	if err != nil {
 		fmt.Println(err)
@@ -60,7 +53,7 @@ func GetStatsByRepo(user, repo, accessToken string) {
 		}
 
 		for {
-			is, resp, err := client.Issues.ListByRepo("projectatomic", "atomicapp", opt)
+			is, resp, err := client.Issues.ListByRepo(user, repo, opt)
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -74,7 +67,7 @@ func GetStatsByRepo(user, repo, accessToken string) {
 		}
 	}
 
-	fmt.Printf("name: %s\nstars: %d, issues: %d\n",
+	fmt.Printf("repository: %s\n\nstars: %d, open issues: %d\n",
 		*repos.FullName, *repos.StargazersCount, len(issues))
 
 	for _, issue := range issues {
