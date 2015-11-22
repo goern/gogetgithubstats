@@ -59,7 +59,12 @@ func GetStatsByRepo(user, repo, accessToken string) {
 				return
 			}
 
-			issues = append(issues, is...)
+			for _, i := range is {
+				if i.PullRequestLinks == nil {
+					issues = append(issues, i)
+				}
+			}
+
 			if resp.NextPage == 0 {
 				break
 			}
@@ -67,15 +72,18 @@ func GetStatsByRepo(user, repo, accessToken string) {
 		}
 	}
 
-	fmt.Printf("repository: %s\n\nstars: %d, open issues: %d\n",
-		*repos.FullName, *repos.StargazersCount, len(issues))
+	fmt.Printf("repository: %s\n\nstars: %d, closed issues: %d, open issues: %d\n",
+		*repos.FullName, *repos.StargazersCount, len(issues), *repos.OpenIssuesCount)
+
+	// FIXME(goern) OpenIssuesCount includes PR and Issues
 
 	for _, issue := range issues {
 		duration := (*issue.ClosedAt).Sub(*issue.CreatedAt)
 
-		fmt.Printf("%03d, %v: created: %v, closed: %v, TTC: %v\n",
+		fmt.Printf("%03d, %v, %v, %v, %v, \"%s\"\n",
 			*issue.Number, *issue.State,
-			*issue.CreatedAt, *issue.ClosedAt, humanizeDuration(duration))
+			*issue.CreatedAt, *issue.ClosedAt, humanizeDuration(duration),
+			*issue.Title)
 	}
 
 	rate, _, err := client.RateLimits()
